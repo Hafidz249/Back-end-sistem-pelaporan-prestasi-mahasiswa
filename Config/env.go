@@ -1,8 +1,9 @@
-package Config
+package config
 
-import(
-	"github.com/joho/godotenv"
+import (
 	"log"
+
+	"github.com/joho/godotenv"
 )
 
 func LoadEnv() {

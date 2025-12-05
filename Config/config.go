@@ -1,39 +1,28 @@
-package Config
+package config
 
 import (
-	"database/sql"
-	"log"
 	"os"
-	"fmt"
-
-	_ "github.com/lib/pq"
 )
 
-var DB *sql.DB
-
-
-func ConnectDB() *sql.DB {
-	dsn := os.Getenv("DB_DSN")
-	db, err := sql.Open("postgres", dsn)
-	if err != nil {
-		log.Fatal(err)
+// GetJWTSecret mengambil JWT secret dari environment variable
+func GetJWTSecret() string {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		secret = "default-secret-key-change-in-production"
 	}
-	if err := db.Ping(); err != nil {
-		log.Fatal("Koneksi database gagal: ", err)
-	}
-
-	DB = db
-
-	return db
+	return secret
 }
 
-func GetDB() *sql.DB {
-	return DB
+// GetDatabaseURL mengambil database URL dari environment variable
+func GetDatabaseURL() string {
+	return os.Getenv("DATABASE_URL")
 }
 
-func Ping() error {
-    if DB == nil {
-        return fmt.Errorf("database connection is not initialized")
-    }
-    return DB.Ping()
+// GetAppPort mengambil port aplikasi dari environment variable
+func GetAppPort() string {
+	port := os.Getenv("APP_PORT")
+	if port == "" {
+		port = "8080"
+	}
+	return port
 }

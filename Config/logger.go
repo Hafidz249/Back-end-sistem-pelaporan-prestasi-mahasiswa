@@ -1,14 +1,12 @@
-package Config
+package config
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 
-	_ "github.com/lib/pq"
-
-    "fmt"
-
 	"github.com/gofiber/fiber/v2"
+	_ "github.com/lib/pq"
 )
 
 func InitDB() *sql.DB {

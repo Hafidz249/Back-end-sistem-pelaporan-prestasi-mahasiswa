@@ -11,5 +11,5 @@ type Lecturers struct {
 	UserID     uuid.UUID `json:"user_id"`
 	LecturerID string    `json:"lecturer_id"`
 	Department string    `json:"department"`
-	Created_at time.Time `json:"created_at"`
+	CreatedAt  time.Time `json:"created_at"`
 }
