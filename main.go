@@ -16,21 +16,27 @@ func main() {
 	// load .env
 	config.LoadEnv()
 
-	// initialize DB
-	db := config.InitDB()
+	// initialize PostgreSQL
+	postgresDB := config.InitDB()
+
+	// initialize MongoDB
+	mongoDB := config.InitMongoDB()
 
 	// Initialize repository
 	authRepo := &repository.AuthRepository{
-		DB:        db,
+		DB:        postgresDB,
 		JWTSecret: config.GetJWTSecret(),
 	}
 
+	achievementRepo := repository.NewAchievementRepository(postgresDB, mongoDB)
+
 	// Initialize service (service sekarang juga sebagai handler)
 	authService := service.NewAuthService(authRepo)
+	achievementService := service.NewAchievementService(achievementRepo)
 
 	// Initialize middleware
-	permMiddleware := middleware.NewPermissionMiddleware(db)
-	roleMiddleware := middleware.NewRoleMiddleware(db)
+	permMiddleware := middleware.NewPermissionMiddleware(postgresDB)
+	roleMiddleware := middleware.NewRoleMiddleware(postgresDB)
 
 	app := fiber.New()
 
@@ -38,7 +44,7 @@ func main() {
 	app.Use(config.LoggerMiddleware)
 
 	// register routes with middleware
-	route.SetupRoutes(app, authService, permMiddleware, roleMiddleware)
+	route.SetupRoutes(app, authService, achievementService, permMiddleware, roleMiddleware)
 
 	port := config.GetAppPort()
 	fmt.Printf("Starting server on :%s\n", port)

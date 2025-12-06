@@ -11,6 +11,7 @@ import (
 func SetupRoutes(
 	app *fiber.App,
 	authService *service.AuthService,
+	achievementService *service.AchievementService,
 	permMiddleware *middleware.PermissionMiddleware,
 	roleMiddleware *middleware.RoleMiddleware,
 ) {
@@ -35,30 +36,36 @@ func SetupRoutes(
 		})
 	})
 
-	// Example: Achievements routes with permission check
+	// Achievements routes - FR-003: Submit Prestasi
 	achievements := api.Group("/achievements")
-	achievements.Get("/",
-		permMiddleware.RequirePermission("achievements", "read"),
-		func(c *fiber.Ctx) error {
-			return c.JSON(fiber.Map{"message": "list achievements"})
-		},
-	)
+	
+	// Mahasiswa submit prestasi (create)
 	achievements.Post("/",
 		permMiddleware.RequirePermission("achievements", "create"),
-		func(c *fiber.Ctx) error {
-			return c.JSON(fiber.Map{"message": "create achievement"})
-		},
+		achievementService.SubmitAchievement,
 	)
+	
+	// Mahasiswa melihat prestasi sendiri
+	achievements.Get("/my",
+		achievementService.GetMyAchievements,
+	)
+	
+	// Melihat detail prestasi
+	achievements.Get("/:id",
+		achievementService.GetAchievementDetail,
+	)
+	
+	// TODO: Update dan delete achievement
 	achievements.Put("/:id",
 		permMiddleware.RequirePermission("achievements", "update"),
 		func(c *fiber.Ctx) error {
-			return c.JSON(fiber.Map{"message": "update achievement"})
+			return c.JSON(fiber.Map{"message": "update achievement - coming soon"})
 		},
 	)
 	achievements.Delete("/:id",
 		permMiddleware.RequirePermission("achievements", "delete"),
 		func(c *fiber.Ctx) error {
-			return c.JSON(fiber.Map{"message": "delete achievement"})
+			return c.JSON(fiber.Map{"message": "delete achievement - coming soon"})
 		},
 	)
 

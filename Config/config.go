@@ -26,3 +26,21 @@ func GetAppPort() string {
 	}
 	return port
 }
+
+// GetMongoURI mengambil MongoDB URI dari environment variable
+func GetMongoURI() string {
+	uri := os.Getenv("MONGO_URI")
+	if uri == "" {
+		uri = "mongodb://localhost:27017"
+	}
+	return uri
+}
+
+// GetMongoDatabase mengambil MongoDB database name dari environment variable
+func GetMongoDatabase() string {
+	dbName := os.Getenv("MONGO_DATABASE")
+	if dbName == "" {
+		dbName = "uas_prestasi"
+	}
+	return dbName
+}

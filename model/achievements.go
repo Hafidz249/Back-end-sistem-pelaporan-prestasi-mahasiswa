@@ -28,3 +28,23 @@ type PublicationDetails struct {
 	Publisher        *string   `bson:"publisher,omitempty" json:"publisher,omitempty"`
 	ISSN             *string   `bson:"issn,omitempty" json:"issn,omitempty"`
 }
+
+// Request model untuk submit prestasi
+type SubmitAchievementRequest struct {
+	AchievementType string      `json:"achievement_type"` // academic, competition, organization, publication, certification, other
+	Title           string      `json:"title"`
+	Description     string      `json:"description"`
+	Details         interface{} `json:"details"` // CompetitionDetails atau PublicationDetails
+}
+
+// Response model untuk submit prestasi
+type SubmitAchievementResponse struct {
+	AchievementID          string    `json:"achievement_id"`           // MongoDB ObjectID
+	AchievementReferenceID uuid.UUID `json:"achievement_reference_id"` // PostgreSQL UUID
+	StudentID              uuid.UUID `json:"student_id"`
+	AchievementType        string    `json:"achievement_type"`
+	Title                  string    `json:"title"`
+	Description            string    `json:"description"`
+	Status                 string    `json:"status"`
+	CreatedAt              string    `json:"created_at"`
+}
