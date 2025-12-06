@@ -36,25 +36,30 @@ func SetupRoutes(
 		})
 	})
 
-	// Achievements routes - FR-003: Submit Prestasi
+	// Achievements routes
 	achievements := api.Group("/achievements")
-	
-	// Mahasiswa submit prestasi (create)
+
+	// FR-003: Submit Prestasi (create draft)
 	achievements.Post("/",
 		permMiddleware.RequirePermission("achievements", "create"),
 		achievementService.SubmitAchievement,
 	)
-	
+
+	// FR-004: Submit untuk Verifikasi (draft -> submitted)
+	achievements.Post("/:reference_id/submit",
+		achievementService.SubmitForVerification,
+	)
+
 	// Mahasiswa melihat prestasi sendiri
 	achievements.Get("/my",
 		achievementService.GetMyAchievements,
 	)
-	
+
 	// Melihat detail prestasi
 	achievements.Get("/:id",
 		achievementService.GetAchievementDetail,
 	)
-	
+
 	// TODO: Update dan delete achievement
 	achievements.Put("/:id",
 		permMiddleware.RequirePermission("achievements", "update"),

@@ -148,3 +148,126 @@ func (r *AchievementRepository) GetAchievementsByStudentID(studentID uuid.UUID) 
 
 	return achievements, nil
 }
+
+// GetAchievementReferenceByID mengambil achievement reference dari PostgreSQL
+func (r *AchievementRepository) GetAchievementReferenceByID(referenceID uuid.UUID) (*model.AchievementReference, error) {
+	var ref model.AchievementReference
+
+	query := `
+		SELECT id, student_id, mongo_achievement_id, status, submitted_at, 
+		       verified_at, verified_by, rejection_note, created_at, updated_at
+		FROM achievement_references
+		WHERE id = $1
+	`
+
+	err := r.PostgresDB.QueryRow(query, referenceID).Scan(
+		&ref.ID,
+		&ref.StudentID,
+		&ref.MongoAchievementID,
+		&ref.Status,
+		&ref.SubmittedAt,
+		&ref.VerifiedAt,
+		&ref.VerifiedBy,
+		&ref.RejectionNote,
+		&ref.CreatedAt,
+		&ref.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &ref, nil
+}
+
+// SubmitForVerification update status achievement dari draft ke submitted
+func (r *AchievementRepository) SubmitForVerification(referenceID uuid.UUID) error {
+	now := time.Now()
+
+	query := `
+		UPDATE achievement_references
+		SET status = 'submitted', submitted_at = $1, updated_at = $2
+		WHERE id = $3 AND status = 'draft'
+	`
+
+	result, err := r.PostgresDB.Exec(query, now, now, referenceID)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows // Tidak ada row yang diupdate (mungkin status bukan draft)
+	}
+
+	return nil
+}
+
+// CreateNotification membuat notifikasi baru
+func (r *AchievementRepository) CreateNotification(notification model.Notification) error {
+	query := `
+		INSERT INTO notifications (id, user_id, type, title, message, data, is_read, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	`
+
+	_, err := r.PostgresDB.Exec(
+		query,
+		notification.ID,
+		notification.UserID,
+		notification.Type,
+		notification.Title,
+		notification.Message,
+		notification.Data,
+		notification.IsRead,
+		notification.CreatedAt,
+	)
+
+	return err
+}
+
+// GetAdvisorByStudentID mengambil advisor_id dari student
+func (r *AchievementRepository) GetAdvisorByStudentID(studentID uuid.UUID) (uuid.UUID, error) {
+	var advisorID uuid.UUID
+
+	query := `SELECT advisor_id FROM students WHERE id = $1`
+
+	err := r.PostgresDB.QueryRow(query, studentID).Scan(&advisorID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	return advisorID, nil
+}
+
+// GetUserByID mengambil user data berdasarkan ID
+func (r *AchievementRepository) GetUserByID(userID uuid.UUID) (*model.Users, error) {
+	var user model.Users
+
+	query := `
+		SELECT id, username, email, password_hash, full_name, role_id, is_active, created_at, updated_at
+		FROM users
+		WHERE id = $1
+	`
+
+	err := r.PostgresDB.QueryRow(query, userID).Scan(
+		&user.ID,
+		&user.Username,
+		&user.Email,
+		&user.PasswordHash,
+		&user.FullName,
+		&user.RoleID,
+		&user.IsActive,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}

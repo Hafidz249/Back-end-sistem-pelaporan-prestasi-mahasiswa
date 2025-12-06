@@ -48,3 +48,11 @@ type SubmitAchievementResponse struct {
 	Status                 string    `json:"status"`
 	CreatedAt              string    `json:"created_at"`
 }
+
+// Response model untuk submit verification
+type SubmitForVerificationResponse struct {
+	AchievementReferenceID uuid.UUID `json:"achievement_reference_id"`
+	Status                 string    `json:"status"`
+	SubmittedAt            string    `json:"submitted_at"`
+	Message                string    `json:"message"`
+}
