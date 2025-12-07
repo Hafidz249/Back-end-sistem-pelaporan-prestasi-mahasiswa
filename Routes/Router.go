@@ -12,6 +12,7 @@ func SetupRoutes(
 	app *fiber.App,
 	authService *service.AuthService,
 	achievementService *service.AchievementService,
+	lecturerService *service.LecturerService,
 	permMiddleware *middleware.PermissionMiddleware,
 	roleMiddleware *middleware.RoleMiddleware,
 ) {
@@ -88,5 +89,14 @@ func SetupRoutes(
 		},
 	)
 
-	// TODO: register other routes (users, roles, lecturers, etc.)
+	// Lecturer routes
+	lecturer := api.Group("/lecturer")
+
+	// FR-006: View Prestasi Mahasiswa Bimbingan
+	lecturer.Get("/students/achievements",
+		roleMiddleware.RequireRole("lecturer", "dosen"),
+		lecturerService.ViewStudentAchievements,
+	)
+
+	// TODO: register other routes (users, roles, etc.)
 }

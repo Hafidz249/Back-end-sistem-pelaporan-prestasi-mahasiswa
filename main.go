@@ -33,6 +33,7 @@ func main() {
 	// Initialize service (service sekarang juga sebagai handler)
 	authService := service.NewAuthService(authRepo)
 	achievementService := service.NewAchievementService(achievementRepo)
+	lecturerService := service.NewLecturerService(achievementRepo)
 
 	// Initialize middleware
 	permMiddleware := middleware.NewPermissionMiddleware(postgresDB)
@@ -44,7 +45,7 @@ func main() {
 	app.Use(config.LoggerMiddleware)
 
 	// register routes with middleware
-	route.SetupRoutes(app, authService, achievementService, permMiddleware, roleMiddleware)
+	route.SetupRoutes(app, authService, achievementService, lecturerService, permMiddleware, roleMiddleware)
 
 	port := config.GetAppPort()
 	fmt.Printf("Starting server on :%s\n", port)

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -348,4 +349,208 @@ func (r *AchievementRepository) DeleteAchievement(referenceID uuid.UUID, mongoAc
 	}
 
 	return nil
+}
+
+
+// GetLecturerByUserID mengambil data lecturer berdasarkan user_id
+func (r *AchievementRepository) GetLecturerByUserID(userID uuid.UUID) (*model.Lecturers, error) {
+	var lecturer model.Lecturers
+
+	query := `
+		SELECT id, user_id, lecturer_id, department, created_at
+		FROM lecturers
+		WHERE user_id = $1
+	`
+
+	err := r.PostgresDB.QueryRow(query, userID).Scan(
+		&lecturer.ID,
+		&lecturer.UserID,
+		&lecturer.LecturerID,
+		&lecturer.Department,
+		&lecturer.CreatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &lecturer, nil
+}
+
+// GetStudentIDsByAdvisor mengambil list student IDs yang dibimbing oleh advisor
+func (r *AchievementRepository) GetStudentIDsByAdvisor(advisorID uuid.UUID) ([]uuid.UUID, error) {
+	query := `
+		SELECT id FROM students WHERE advisor_id = $1
+	`
+
+	rows, err := r.PostgresDB.Query(query, advisorID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var studentIDs []uuid.UUID
+	for rows.Next() {
+		var studentID uuid.UUID
+		if err := rows.Scan(&studentID); err != nil {
+			return nil, err
+		}
+		studentIDs = append(studentIDs, studentID)
+	}
+
+	return studentIDs, nil
+}
+
+// GetAchievementReferencesWithPagination mengambil achievement references dengan pagination
+func (r *AchievementRepository) GetAchievementReferencesWithPagination(
+	studentIDs []uuid.UUID,
+	status string,
+	page int,
+	perPage int,
+) ([]model.AchievementReference, int64, error) {
+	// Build query dengan filter
+	query := `
+		SELECT id, student_id, mongo_achievement_id, status, submitted_at, 
+		       verified_at, verified_by, rejection_note, created_at, updated_at
+		FROM achievement_references
+		WHERE student_id = ANY($1)
+	`
+
+	countQuery := `
+		SELECT COUNT(*) FROM achievement_references WHERE student_id = ANY($1)
+	`
+
+	// Add status filter if provided
+	if status != "" {
+		query += ` AND status = $2`
+		countQuery += ` AND status = $2`
+	}
+
+	// Add ordering
+	query += ` ORDER BY created_at DESC`
+
+	// Add pagination
+	offset := (page - 1) * perPage
+	query += ` LIMIT $3 OFFSET $4`
+
+	// Get total count
+	var totalCount int64
+	if status != "" {
+		err := r.PostgresDB.QueryRow(countQuery, pq.Array(studentIDs), status).Scan(&totalCount)
+		if err != nil {
+			return nil, 0, err
+		}
+	} else {
+		err := r.PostgresDB.QueryRow(countQuery, pq.Array(studentIDs)).Scan(&totalCount)
+		if err != nil {
+			return nil, 0, err
+		}
+	}
+
+	// Get paginated data
+	var rows *sql.Rows
+	var err error
+
+	if status != "" {
+		rows, err = r.PostgresDB.Query(query, pq.Array(studentIDs), status, perPage, offset)
+	} else {
+		rows, err = r.PostgresDB.Query(query, pq.Array(studentIDs), perPage, offset)
+	}
+
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var references []model.AchievementReference
+	for rows.Next() {
+		var ref model.AchievementReference
+		err := rows.Scan(
+			&ref.ID,
+			&ref.StudentID,
+			&ref.MongoAchievementID,
+			&ref.Status,
+			&ref.SubmittedAt,
+			&ref.VerifiedAt,
+			&ref.VerifiedBy,
+			&ref.RejectionNote,
+			&ref.CreatedAt,
+			&ref.UpdatedAt,
+		)
+		if err != nil {
+			return nil, 0, err
+		}
+		references = append(references, ref)
+	}
+
+	return references, totalCount, nil
+}
+
+// GetStudentByID mengambil student berdasarkan ID
+func (r *AchievementRepository) GetStudentByID(studentID uuid.UUID) (*model.Student, error) {
+	var student model.Student
+
+	query := `
+		SELECT id, user_id, student_id, program_study, academic_year, advisor_id, created_at
+		FROM students
+		WHERE id = $1
+	`
+
+	err := r.PostgresDB.QueryRow(query, studentID).Scan(
+		&student.ID,
+		&student.UserID,
+		&student.StudentID,
+		&student.ProgramStudy,
+		&student.AcademicYear,
+		&student.AdvisorID,
+		&student.CreatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &student, nil
+}
+
+// GetAchievementsByIDs mengambil multiple achievements dari MongoDB
+func (r *AchievementRepository) GetAchievementsByIDs(achievementIDs []string) (map[string]model.Achievement, error) {
+	ctx := context.Background()
+
+	// Convert string IDs to ObjectIDs
+	var objectIDs []primitive.ObjectID
+	for _, id := range achievementIDs {
+		objectID, err := primitive.ObjectIDFromHex(id)
+		if err != nil {
+			continue // Skip invalid IDs
+		}
+		objectIDs = append(objectIDs, objectID)
+	}
+
+	if len(objectIDs) == 0 {
+		return make(map[string]model.Achievement), nil
+	}
+
+	collection := r.MongoDB.Collection("achievements")
+
+	// Find all achievements with given IDs
+	cursor, err := collection.Find(ctx, primitive.M{
+		"_id": primitive.M{"$in": objectIDs},
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	// Map achievements by ID for easy lookup
+	achievementsMap := make(map[string]model.Achievement)
+	for cursor.Next(ctx) {
+		var achievement model.Achievement
+		if err := cursor.Decode(&achievement); err != nil {
+			continue
+		}
+		achievementsMap[achievement.ID.Hex()] = achievement
+	}
+
+	return achievementsMap, nil
 }
