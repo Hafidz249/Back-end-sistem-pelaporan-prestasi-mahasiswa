@@ -327,3 +327,84 @@ func (s *AchievementService) createNotificationForAdvisor(student *model.Student
 
 	return s.AchievementRepo.CreateNotification(notification)
 }
+
+
+// DeleteAchievement - Mahasiswa hapus prestasi draft (FR-005)
+func (s *AchievementService) DeleteAchievement(c *fiber.Ctx) error {
+	referenceIDStr := c.Params("reference_id")
+
+	if referenceIDStr == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "achievement reference id required",
+		})
+	}
+
+	referenceID, err := uuid.Parse(referenceIDStr)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "invalid achievement reference id",
+		})
+	}
+
+	// Ambil user_id dari context
+	userIDStr := middleware.GetUserID(c)
+	if userIDStr == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "user not authenticated",
+		})
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "invalid user id",
+		})
+	}
+
+	// Ambil student_id dari user_id
+	student, err := s.AchievementRepo.GetStudentByUserID(userID)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"error": "student not found",
+		})
+	}
+
+	// Ambil achievement reference
+	achievementRef, err := s.AchievementRepo.GetAchievementReferenceByID(referenceID)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"error": "achievement reference not found",
+		})
+	}
+
+	// Verify ownership
+	if achievementRef.StudentID != student.ID {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"error": "you can only delete your own achievements",
+		})
+	}
+
+	// Verify status is draft
+	if achievementRef.Status != "draft" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "only draft achievements can be deleted",
+		})
+	}
+
+	// Delete achievement (soft delete)
+	err = s.AchievementRepo.DeleteAchievement(referenceID, achievementRef.MongoAchievementID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "failed to delete achievement",
+		})
+	}
+
+	// Return success response
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": "prestasi berhasil dihapus",
+		"data": fiber.Map{
+			"achievement_reference_id": referenceID,
+			"status":                   "deleted",
+		},
+	})
+}

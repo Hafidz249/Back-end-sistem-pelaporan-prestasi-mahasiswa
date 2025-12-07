@@ -60,17 +60,16 @@ func SetupRoutes(
 		achievementService.GetAchievementDetail,
 	)
 
-	// TODO: Update dan delete achievement
+	// FR-005: Hapus Prestasi (soft delete)
+	achievements.Delete("/:reference_id",
+		achievementService.DeleteAchievement,
+	)
+
+	// TODO: Update achievement
 	achievements.Put("/:id",
 		permMiddleware.RequirePermission("achievements", "update"),
 		func(c *fiber.Ctx) error {
 			return c.JSON(fiber.Map{"message": "update achievement - coming soon"})
-		},
-	)
-	achievements.Delete("/:id",
-		permMiddleware.RequirePermission("achievements", "delete"),
-		func(c *fiber.Ctx) error {
-			return c.JSON(fiber.Map{"message": "delete achievement - coming soon"})
 		},
 	)
 

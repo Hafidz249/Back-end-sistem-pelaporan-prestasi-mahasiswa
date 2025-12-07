@@ -1,6 +1,8 @@
 package model
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -12,6 +14,8 @@ type Achievement struct {
 	Title           string             `bson:"title" json:"title"`
 	Description     string             `bson:"description" json:"description"`
 	Details         interface{}        `bson:"details" json:"details"`
+	IsDeleted       bool               `bson:"isDeleted,omitempty" json:"is_deleted,omitempty"`
+	DeletedAt       *time.Time         `bson:"deletedAt,omitempty" json:"deleted_at,omitempty"`
 }
 
 type CompetitionDetails struct {

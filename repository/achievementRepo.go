@@ -129,14 +129,23 @@ func (r *AchievementRepository) GetAchievementByID(achievementID string) (*model
 	return &achievement, nil
 }
 
-// GetAchievementsByStudentID mengambil semua achievements milik student
+// GetAchievementsByStudentID mengambil semua achievements milik student (exclude deleted)
 func (r *AchievementRepository) GetAchievementsByStudentID(studentID uuid.UUID) ([]model.Achievement, error) {
 	ctx := context.Background()
 
 	var achievements []model.Achievement
 	collection := r.MongoDB.Collection("achievements")
 
-	cursor, err := collection.Find(ctx, primitive.M{"studentId": studentID})
+	// Filter: hanya ambil yang tidak dihapus
+	filter := primitive.M{
+		"studentId": studentID,
+		"$or": []primitive.M{
+			{"isDeleted": primitive.M{"$exists": false}},
+			{"isDeleted": false},
+		},
+	}
+
+	cursor, err := collection.Find(ctx, filter)
 	if err != nil {
 		return nil, err
 	}
@@ -270,4 +279,73 @@ func (r *AchievementRepository) GetUserByID(userID uuid.UUID) (*model.Users, err
 	}
 
 	return &user, nil
+}
+
+// DeleteAchievement soft delete achievement (FR-005)
+func (r *AchievementRepository) DeleteAchievement(referenceID uuid.UUID, mongoAchievementID string) error {
+	ctx := context.Background()
+
+	// 1. Soft delete di MongoDB
+	objectID, err := primitive.ObjectIDFromHex(mongoAchievementID)
+	if err != nil {
+		return err
+	}
+
+	now := time.Now()
+	collection := r.MongoDB.Collection("achievements")
+
+	update := primitive.M{
+		"$set": primitive.M{
+			"isDeleted": true,
+			"deletedAt": now,
+		},
+	}
+
+	_, err = collection.UpdateOne(ctx, primitive.M{"_id": objectID}, update)
+	if err != nil {
+		return err
+	}
+
+	// 2. Update reference di PostgreSQL (soft delete)
+	query := `
+		UPDATE achievement_references
+		SET status = 'deleted', updated_at = $1
+		WHERE id = $2 AND status = 'draft'
+	`
+
+	result, err := r.PostgresDB.Exec(query, now, referenceID)
+	if err != nil {
+		// Rollback MongoDB jika gagal update PostgreSQL
+		rollbackUpdate := primitive.M{
+			"$set": primitive.M{
+				"isDeleted": false,
+			},
+			"$unset": primitive.M{
+				"deletedAt": "",
+			},
+		}
+		collection.UpdateOne(ctx, primitive.M{"_id": objectID}, rollbackUpdate)
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		// Rollback MongoDB jika tidak ada row yang diupdate
+		rollbackUpdate := primitive.M{
+			"$set": primitive.M{
+				"isDeleted": false,
+			},
+			"$unset": primitive.M{
+				"deletedAt": "",
+			},
+		}
+		collection.UpdateOne(ctx, primitive.M{"_id": objectID}, rollbackUpdate)
+		return sql.ErrNoRows
+	}
+
+	return nil
 }
