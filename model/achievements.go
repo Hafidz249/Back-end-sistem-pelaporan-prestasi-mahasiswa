@@ -85,3 +85,20 @@ type PaginationMeta struct {
 	TotalPages  int   `json:"total_pages"`
 	TotalItems  int64 `json:"total_items"`
 }
+
+
+// Verify achievement request
+type VerifyAchievementRequest struct {
+	Action string  `json:"action"` // "approve" or "reject"
+	Note   *string `json:"note"`   // Required if action = "reject"
+}
+
+// Verify achievement response
+type VerifyAchievementResponse struct {
+	AchievementReferenceID uuid.UUID  `json:"achievement_reference_id"`
+	Status                 string     `json:"status"`
+	VerifiedBy             uuid.UUID  `json:"verified_by"`
+	VerifiedAt             time.Time  `json:"verified_at"`
+	RejectionNote          *string    `json:"rejection_note,omitempty"`
+	Message                string     `json:"message"`
+}

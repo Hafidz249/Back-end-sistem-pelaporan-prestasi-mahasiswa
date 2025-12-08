@@ -90,12 +90,25 @@ func SetupRoutes(
 	)
 
 	// Lecturer routes
-	lecturer := api.Group("/lecturer")
+	lecturer := api.Group("/lecturer", roleMiddleware.RequireRole("lecturer", "dosen"))
 
 	// FR-006: View Prestasi Mahasiswa Bimbingan
 	lecturer.Get("/students/achievements",
-		roleMiddleware.RequireRole("lecturer", "dosen"),
 		lecturerService.ViewStudentAchievements,
+	)
+
+	// FR-007: Verifikasi Prestasi
+	lecturer.Post("/achievements/:reference_id/verify",
+		lecturerService.VerifyAchievement,
+	)
+	lecturer.Post("/achievements/:reference_id/reject",
+		lecturerService.RejectAchievement,
+	)
+
+	// FR-007: Verify Prestasi (Approve/Reject)
+	lecturer.Post("/achievements/:reference_id/verify",
+		roleMiddleware.RequireRole("lecturer", "dosen"),
+		lecturerService.VerifyAchievement,
 	)
 
 	// TODO: register other routes (users, roles, etc.)

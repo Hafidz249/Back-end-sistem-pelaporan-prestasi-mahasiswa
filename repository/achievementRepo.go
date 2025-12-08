@@ -554,3 +554,116 @@ func (r *AchievementRepository) GetAchievementsByIDs(achievementIDs []string) (m
 
 	return achievementsMap, nil
 }
+
+
+// VerifyAchievement approve atau reject prestasi (FR-007)
+func (r *AchievementRepository) VerifyAchievement(referenceID uuid.UUID, verifierID uuid.UUID, action string, note *string) error {
+	now := time.Now()
+
+	var query string
+	var args []interface{}
+
+	if action == "approve" {
+		// Update status ke 'verified'
+		query = `
+			UPDATE achievement_references
+			SET status = 'verified', verified_by = $1, verified_at = $2, updated_at = $3
+			WHERE id = $4 AND status = 'submitted'
+		`
+		args = []interface{}{verifierID, now, now, referenceID}
+	} else if action == "reject" {
+		// Update status ke 'rejected'
+		query = `
+			UPDATE achievement_references
+			SET status = 'rejected', verified_by = $1, verified_at = $2, rejection_note = $3, updated_at = $4
+			WHERE id = $5 AND status = 'submitted'
+		`
+		args = []interface{}{verifierID, now, note, now, referenceID}
+	} else {
+		return sql.ErrNoRows
+	}
+
+	result, err := r.PostgresDB.Exec(query, args...)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows // Tidak ada row yang diupdate (mungkin status bukan submitted)
+	}
+
+	return nil
+}
+
+// CheckLecturerOwnsStudent mengecek apakah lecturer adalah advisor dari student
+func (r *AchievementRepository) CheckLecturerOwnsStudent(lecturerID uuid.UUID, studentID uuid.UUID) (bool, error) {
+	var count int
+	query := `SELECT COUNT(*) FROM students WHERE id = $1 AND advisor_id = $2`
+
+	err := r.PostgresDB.QueryRow(query, studentID, lecturerID).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}
+
+
+// VerifyAchievement approve prestasi (FR-007)
+func (r *AchievementRepository) VerifyAchievement(referenceID uuid.UUID, verifiedBy uuid.UUID) error {
+	now := time.Now()
+
+	query := `
+		UPDATE achievement_references
+		SET status = 'verified', verified_at = $1, verified_by = $2, updated_at = $3
+		WHERE id = $4 AND status = 'submitted'
+	`
+
+	result, err := r.PostgresDB.Exec(query, now, verifiedBy, now, referenceID)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
+
+// RejectAchievement reject prestasi dengan rejection note (FR-007)
+func (r *AchievementRepository) RejectAchievement(referenceID uuid.UUID, verifiedBy uuid.UUID, rejectionNote string) error {
+	now := time.Now()
+
+	query := `
+		UPDATE achievement_references
+		SET status = 'rejected', verified_at = $1, verified_by = $2, rejection_note = $3, updated_at = $4
+		WHERE id = $5 AND status = 'submitted'
+	`
+
+	result, err := r.PostgresDB.Exec(query, now, verifiedBy, rejectionNote, now, referenceID)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return nil
+}
