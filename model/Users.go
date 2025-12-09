@@ -18,6 +18,39 @@ type Users struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
+// FR-009: Manage Users
+type CreateUserRequest struct {
+	Username string    `json:"username"`
+	Email    string    `json:"email"`
+	Password string    `json:"password"`
+	FullName string    `json:"full_name"`
+	RoleID   uuid.UUID `json:"role_id"`
+}
+
+type UpdateUserRequest struct {
+	FullName string    `json:"full_name"`
+	RoleID   uuid.UUID `json:"role_id"`
+	IsActive bool      `json:"is_active"`
+}
+
+type CreateStudentProfileRequest struct {
+	UserID          uuid.UUID  `json:"user_id"`
+	StudentIDNumber string     `json:"student_id_number"`
+	ProgramStudy    string     `json:"program_study"`
+	AcademicYear    string     `json:"academic_year"`
+	AdvisorID       *uuid.UUID `json:"advisor_id,omitempty"`
+}
+
+type CreateLecturerProfileRequest struct {
+	UserID            uuid.UUID `json:"user_id"`
+	LecturerIDNumber  string    `json:"lecturer_id_number"`
+	Department        string    `json:"department"`
+}
+
+type UpdateAdvisorRequest struct {
+	AdvisorID uuid.UUID `json:"advisor_id"`
+}
+
 type LoginRequest struct {
 	Credential string `json:"credential"` // username atau email
 	Password   string `json:"password"`

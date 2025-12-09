@@ -13,6 +13,7 @@ func SetupRoutes(
 	authService *service.AuthService,
 	achievementService *service.AchievementService,
 	lecturerService *service.LecturerService,
+	adminService *service.AdminService,
 	permMiddleware *middleware.PermissionMiddleware,
 	roleMiddleware *middleware.RoleMiddleware,
 ) {
@@ -74,11 +75,24 @@ func SetupRoutes(
 		},
 	)
 
-	// Example: Admin routes with role check
+	// FR-009: Admin routes - Manage Users
 	admin := api.Group("/admin", roleMiddleware.RequireRole("admin", "super_admin"))
-	admin.Get("/users", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{"message": "list all users (admin only)"})
-	})
+
+	// User management
+	admin.Get("/users", adminService.GetAllUsers)
+	admin.Post("/users", adminService.CreateUser)
+	admin.Put("/users/:user_id", adminService.UpdateUser)
+	admin.Delete("/users/:user_id", adminService.DeleteUser)
+
+	// Profile management
+	admin.Post("/students/profile", adminService.CreateStudentProfile)
+	admin.Post("/lecturers/profile", adminService.CreateLecturerProfile)
+
+	// Advisor management
+	admin.Put("/students/:student_id/advisor", adminService.UpdateStudentAdvisor)
+
+	// Role management
+	admin.Get("/roles", adminService.GetAllRoles)
 
 	// Example: Student routes
 	students := api.Group("/students")
@@ -97,19 +111,11 @@ func SetupRoutes(
 		lecturerService.ViewStudentAchievements,
 	)
 
-	// FR-007: Verifikasi Prestasi
+	// FR-007 & FR-008: Verify/Reject Prestasi
 	lecturer.Post("/achievements/:reference_id/verify",
 		lecturerService.VerifyAchievement,
 	)
 	lecturer.Post("/achievements/:reference_id/reject",
 		lecturerService.RejectAchievement,
 	)
-
-	// FR-007: Verify Prestasi (Approve/Reject)
-	lecturer.Post("/achievements/:reference_id/verify",
-		roleMiddleware.RequireRole("lecturer", "dosen"),
-		lecturerService.VerifyAchievement,
-	)
-
-	// TODO: register other routes (users, roles, etc.)
 }
