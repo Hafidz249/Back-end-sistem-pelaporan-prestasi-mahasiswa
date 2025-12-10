@@ -4,6 +4,7 @@ import (
 	"POJECT_UAS/model"
 	"context"
 	"database/sql"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -666,4 +667,85 @@ func (r *AchievementRepository) RejectAchievement(referenceID uuid.UUID, verifie
 	}
 
 	return nil
+}
+
+// GetAllAchievementReferencesWithPagination mengambil semua achievement references untuk admin (FR-010)
+func (r *AchievementRepository) GetAllAchievementReferencesWithPagination(
+	status string,
+	achievementType string,
+	page int,
+	perPage int,
+) ([]model.AchievementReference, int64, error) {
+	// Build base query
+	baseWhere := "WHERE 1=1"
+	var args []interface{}
+	argIndex := 1
+
+	// Add status filter if provided
+	if status != "" {
+		baseWhere += " AND ar.status = $" + strconv.Itoa(argIndex)
+		args = append(args, status)
+		argIndex++
+	}
+
+	// Count query
+	countQuery := `
+		SELECT COUNT(*)
+		FROM achievement_references ar
+		LEFT JOIN students s ON ar.student_id = s.id
+		LEFT JOIN users u ON s.user_id = u.id
+	` + baseWhere
+
+	// Select query
+	selectQuery := `
+		SELECT ar.id, ar.student_id, ar.mongo_achievement_id, ar.status, 
+		       ar.submitted_at, ar.verified_at, ar.verified_by, ar.rejection_note, 
+		       ar.created_at, ar.updated_at
+		FROM achievement_references ar
+		LEFT JOIN students s ON ar.student_id = s.id
+		LEFT JOIN users u ON s.user_id = u.id
+	` + baseWhere + `
+		ORDER BY ar.created_at DESC
+		LIMIT $` + strconv.Itoa(argIndex) + ` OFFSET $` + strconv.Itoa(argIndex+1)
+
+	// Add pagination args
+	offset := (page - 1) * perPage
+	paginationArgs := append(args, perPage, offset)
+
+	// Get total count
+	var totalCount int64
+	err := r.PostgresDB.QueryRow(countQuery, args...).Scan(&totalCount)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Get paginated data
+	rows, err := r.PostgresDB.Query(selectQuery, paginationArgs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var references []model.AchievementReference
+	for rows.Next() {
+		var ref model.AchievementReference
+		err := rows.Scan(
+			&ref.ID,
+			&ref.StudentID,
+			&ref.MongoAchievementID,
+			&ref.Status,
+			&ref.SubmittedAt,
+			&ref.VerifiedAt,
+			&ref.VerifiedBy,
+			&ref.RejectionNote,
+			&ref.CreatedAt,
+			&ref.UpdatedAt,
+		)
+		if err != nil {
+			return nil, 0, err
+		}
+		references = append(references, ref)
+	}
+
+	return references, totalCount, nil
 }

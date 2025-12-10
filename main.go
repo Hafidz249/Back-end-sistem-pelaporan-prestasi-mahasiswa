@@ -35,7 +35,7 @@ func main() {
 	authService := service.NewAuthService(authRepo)
 	achievementService := service.NewAchievementService(achievementRepo)
 	lecturerService := service.NewLecturerService(achievementRepo)
-	adminService := service.NewAdminService(userRepo)
+	adminService := service.NewAdminService(userRepo, achievementRepo)
 
 	// Initialize middleware
 	permMiddleware := middleware.NewPermissionMiddleware(postgresDB)

@@ -94,6 +94,9 @@ func SetupRoutes(
 	// Role management
 	admin.Get("/roles", adminService.GetAllRoles)
 
+	// FR-010: View All Achievements
+	admin.Get("/achievements", adminService.ViewAllAchievements)
+
 	// Example: Student routes
 	students := api.Group("/students")
 	students.Get("/",
