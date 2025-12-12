@@ -14,6 +14,7 @@ func SetupRoutes(
 	achievementService *service.AchievementService,
 	lecturerService *service.LecturerService,
 	adminService *service.AdminService,
+	statisticsService *service.StatisticsService,
 	permMiddleware *middleware.PermissionMiddleware,
 	roleMiddleware *middleware.RoleMiddleware,
 ) {
@@ -67,6 +68,11 @@ func SetupRoutes(
 		achievementService.DeleteAchievement,
 	)
 
+	// FR-011: Student Statistics (own)
+	achievements.Get("/statistics",
+		statisticsService.GetMyStatistics,
+	)
+
 	// TODO: Update achievement
 	achievements.Put("/:id",
 		permMiddleware.RequirePermission("achievements", "update"),
@@ -97,6 +103,9 @@ func SetupRoutes(
 	// FR-010: View All Achievements
 	admin.Get("/achievements", adminService.ViewAllAchievements)
 
+	// FR-011: Admin Statistics
+	admin.Get("/statistics", statisticsService.GetAllStatistics)
+
 	// Example: Student routes
 	students := api.Group("/students")
 	students.Get("/",
@@ -120,5 +129,10 @@ func SetupRoutes(
 	)
 	lecturer.Post("/achievements/:reference_id/reject",
 		lecturerService.RejectAchievement,
+	)
+
+	// FR-011: Lecturer Statistics (advisee)
+	lecturer.Get("/statistics",
+		statisticsService.GetAdviseeStatistics,
 	)
 }

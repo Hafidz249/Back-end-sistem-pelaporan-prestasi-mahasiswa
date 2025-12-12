@@ -749,3 +749,240 @@ func (r *AchievementRepository) GetAllAchievementReferencesWithPagination(
 
 	return references, totalCount, nil
 }
+// GetAchievementStatistics mengambil statistik prestasi (FR-011)
+func (r *AchievementRepository) GetAchievementStatistics(
+	studentIDs []uuid.UUID, // kosong jika admin (all students)
+	startDate *time.Time,
+	endDate *time.Time,
+	achievementType *string,
+	status *string,
+) (*model.AchievementStatistics, error) {
+	ctx := context.Background()
+
+	// Build base filter untuk PostgreSQL
+	baseWhere := "WHERE 1=1"
+	var args []interface{}
+	argIndex := 1
+
+	// Filter by student IDs (untuk dosen wali atau mahasiswa)
+	if len(studentIDs) > 0 {
+		baseWhere += " AND ar.student_id = ANY($" + strconv.Itoa(argIndex) + ")"
+		args = append(args, pq.Array(studentIDs))
+		argIndex++
+	}
+
+	// Filter by date range
+	if startDate != nil {
+		baseWhere += " AND ar.created_at >= $" + strconv.Itoa(argIndex)
+		args = append(args, *startDate)
+		argIndex++
+	}
+	if endDate != nil {
+		baseWhere += " AND ar.created_at <= $" + strconv.Itoa(argIndex)
+		args = append(args, *endDate)
+		argIndex++
+	}
+
+	// Filter by status
+	if status != nil {
+		baseWhere += " AND ar.status = $" + strconv.Itoa(argIndex)
+		args = append(args, *status)
+		argIndex++
+	}
+
+	// 1. Get summary statistics
+	summaryQuery := `
+		SELECT 
+			COUNT(*) as total,
+			COUNT(CASE WHEN ar.status = 'verified' THEN 1 END) as verified,
+			COUNT(CASE WHEN ar.status = 'submitted' THEN 1 END) as pending,
+			COUNT(CASE WHEN ar.status = 'rejected' THEN 1 END) as rejected,
+			COUNT(DISTINCT ar.student_id) as total_students,
+			MIN(ar.created_at) as min_date,
+			MAX(ar.created_at) as max_date
+		FROM achievement_references ar
+	` + baseWhere
+
+	var summary model.StatisticSummary
+	var minDate, maxDate sql.NullTime
+	err := r.PostgresDB.QueryRow(summaryQuery, args...).Scan(
+		&summary.TotalAchievements,
+		&summary.VerifiedAchievements,
+		&summary.PendingAchievements,
+		&summary.RejectedAchievements,
+		&summary.TotalStudents,
+		&minDate,
+		&maxDate,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if minDate.Valid && maxDate.Valid {
+		summary.DateRange = model.DateRange{
+			StartDate: minDate.Time,
+			EndDate:   maxDate.Time,
+		}
+	}
+
+	// 2. Get achievement references untuk analisis lebih lanjut
+	referencesQuery := `
+		SELECT ar.mongo_achievement_id, ar.student_id, ar.status, ar.created_at,
+		       s.student_id as student_number, u.full_name, s.program_study, s.academic_year
+		FROM achievement_references ar
+		LEFT JOIN students s ON ar.student_id = s.id
+		LEFT JOIN users u ON s.user_id = u.id
+	` + baseWhere + ` ORDER BY ar.created_at DESC`
+
+	rows, err := r.PostgresDB.Query(referencesQuery, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var mongoIDs []string
+	var studentMap = make(map[uuid.UUID]*model.TopStudent)
+	var periodMap = make(map[string]int64)
+
+	for rows.Next() {
+		var mongoID string
+		var studentID uuid.UUID
+		var status string
+		var createdAt time.Time
+		var studentNumber, fullName, programStudy, academicYear sql.NullString
+
+		err := rows.Scan(&mongoID, &studentID, &status, &createdAt,
+			&studentNumber, &fullName, &programStudy, &academicYear)
+		if err != nil {
+			continue
+		}
+
+		mongoIDs = append(mongoIDs, mongoID)
+
+		// Build student statistics
+		if studentNumber.Valid && fullName.Valid {
+			if student, exists := studentMap[studentID]; exists {
+				student.TotalCount++
+				if status == "verified" {
+					student.VerifiedCount++
+				}
+			} else {
+				studentMap[studentID] = &model.TopStudent{
+					StudentID:       studentID,
+					StudentIDNumber: studentNumber.String,
+					FullName:        fullName.String,
+					ProgramStudy:    programStudy.String,
+					AcademicYear:    academicYear.String,
+					TotalCount:      1,
+					VerifiedCount:   0,
+				}
+				if status == "verified" {
+					studentMap[studentID].VerifiedCount = 1
+				}
+			}
+		}
+
+		// Build period statistics (monthly)
+		period := createdAt.Format("2006-01")
+		periodMap[period]++
+	}
+
+	// 3. Get achievements from MongoDB untuk type dan level statistics
+	var typeMap = make(map[string]int64)
+	var levelMap = make(map[string]int64)
+
+	if len(mongoIDs) > 0 {
+		// Convert to ObjectIDs
+		var objectIDs []primitive.ObjectID
+		for _, id := range mongoIDs {
+			if objectID, err := primitive.ObjectIDFromHex(id); err == nil {
+				objectIDs = append(objectIDs, objectID)
+			}
+		}
+
+		if len(objectIDs) > 0 {
+			collection := r.MongoDB.Collection("achievements")
+			cursor, err := collection.Find(ctx, primitive.M{
+				"_id": primitive.M{"$in": objectIDs},
+			})
+			if err == nil {
+				defer cursor.Close(ctx)
+
+				for cursor.Next(ctx) {
+					var achievement model.Achievement
+					if err := cursor.Decode(&achievement); err == nil {
+						// Filter by achievement type if specified
+						if achievementType == nil || *achievementType == "" || achievement.AchievementType == *achievementType {
+							typeMap[achievement.AchievementType]++
+
+							// Extract level from details (assuming it's stored in details)
+							if level, ok := achievement.Details["level"].(string); ok {
+								levelMap[level]++
+							} else {
+								levelMap["unknown"]++
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// 4. Build response
+	statistics := &model.AchievementStatistics{
+		Summary: summary,
+	}
+
+	// Convert type map to slice
+	var totalTypes int64
+	for _, count := range typeMap {
+		totalTypes += count
+	}
+	for achType, count := range typeMap {
+		percentage := float64(0)
+		if totalTypes > 0 {
+			percentage = float64(count) / float64(totalTypes) * 100
+		}
+		statistics.TotalByType = append(statistics.TotalByType, model.TypeStatistic{
+			AchievementType: achType,
+			Count:           count,
+			Percentage:      percentage,
+		})
+	}
+
+	// Convert period map to slice
+	for period, count := range periodMap {
+		year, _ := strconv.Atoi(period[:4])
+		month, _ := strconv.Atoi(period[5:7])
+		statistics.TotalByPeriod = append(statistics.TotalByPeriod, model.PeriodStatistic{
+			Period: period,
+			Count:  count,
+			Year:   year,
+			Month:  &month,
+		})
+	}
+
+	// Convert student map to top students slice (sorted by total count)
+	for _, student := range studentMap {
+		statistics.TopStudents = append(statistics.TopStudents, *student)
+	}
+
+	// Convert level map to slice
+	var totalLevels int64
+	for _, count := range levelMap {
+		totalLevels += count
+	}
+	for level, count := range levelMap {
+		percentage := float64(0)
+		if totalLevels > 0 {
+			percentage = float64(count) / float64(totalLevels) * 100
+		}
+		statistics.CompetitionLevels = append(statistics.CompetitionLevels, model.LevelStatistic{
+			Level:      level,
+			Count:      count,
+			Percentage: percentage,
+		})
+	}
+
+	return statistics, nil
+}
