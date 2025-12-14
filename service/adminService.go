@@ -396,3 +396,78 @@ func (s *AdminService) ViewAllAchievements(c *fiber.Ctx) error {
 		},
 	})
 }
+// GetUserByID - Admin get user by ID
+// @Summary Get user by ID
+// @Description Admin mendapatkan detail user berdasarkan ID
+// @Tags Admin
+// @Security BearerAuth
+// @Param id path string true "User ID"
+// @Success 200 {object} map[string]interface{} "User details"
+// @Failure 404 {object} map[string]string "User not found"
+// @Router /api/v1/users/{id} [get]
+func (s *AdminService) GetUserByID(c *fiber.Ctx) error {
+	// TODO: Implement get user by ID
+	return c.JSON(fiber.Map{
+		"message": "get user by ID - coming soon",
+	})
+}
+
+// UpdateUserRole - Admin update user role
+// @Summary Update user role
+// @Description Admin mengubah role user
+// @Tags Admin
+// @Security BearerAuth
+// @Param id path string true "User ID"
+// @Param request body map[string]string true "Role update request"
+// @Success 200 {object} map[string]string "Role updated"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Router /api/v1/users/{id}/role [put]
+func (s *AdminService) UpdateUserRole(c *fiber.Ctx) error {
+	// TODO: Implement update user role
+	return c.JSON(fiber.Map{
+		"message": "update user role - coming soon",
+	})
+}
+
+// GetAllStudents - Get all students
+// @Summary Get all students
+// @Description Mendapatkan daftar semua mahasiswa
+// @Tags Students
+// @Security BearerAuth
+// @Success 200 {object} map[string]interface{} "List of students"
+// @Router /api/v1/students [get]
+func (s *AdminService) GetAllStudents(c *fiber.Ctx) error {
+	// TODO: Implement get all students
+	return c.JSON(fiber.Map{
+		"message": "get all students - coming soon",
+	})
+}
+
+// GetStudentByID - Get student by ID
+// @Summary Get student by ID
+// @Description Mendapatkan detail mahasiswa berdasarkan ID
+// @Tags Students
+// @Security BearerAuth
+// @Param id path string true "Student ID"
+// @Success 200 {object} map[string]interface{} "Student details"
+// @Router /api/v1/students/{id} [get]
+func (s *AdminService) GetStudentByID(c *fiber.Ctx) error {
+	// TODO: Implement get student by ID
+	return c.JSON(fiber.Map{
+		"message": "get student by ID - coming soon",
+	})
+}
+
+// GetAllLecturers - Get all lecturers
+// @Summary Get all lecturers
+// @Description Mendapatkan daftar semua dosen
+// @Tags Lecturers
+// @Security BearerAuth
+// @Success 200 {object} map[string]interface{} "List of lecturers"
+// @Router /api/v1/lecturers [get]
+func (s *AdminService) GetAllLecturers(c *fiber.Ctx) error {
+	// TODO: Implement get all lecturers
+	return c.JSON(fiber.Map{
+		"message": "get all lecturers - coming soon",
+	})
+}

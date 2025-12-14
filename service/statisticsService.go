@@ -211,3 +211,17 @@ func (s *StatisticsService) sortAndLimitStatistics(statistics *model.Achievement
 		return statistics.CompetitionLevels[i].Count > statistics.CompetitionLevels[j].Count
 	})
 }
+// GetStudentReport - Get detailed student report
+// @Summary Get student report
+// @Description Mendapatkan laporan detail prestasi mahasiswa
+// @Tags Reports
+// @Security BearerAuth
+// @Param id path string true "Student ID"
+// @Success 200 {object} map[string]interface{} "Student report"
+// @Router /api/v1/reports/student/{id} [get]
+func (s *StatisticsService) GetStudentReport(c *fiber.Ctx) error {
+	// TODO: Implement student report
+	return c.JSON(fiber.Map{
+		"message": "get student report - coming soon",
+	})
+}

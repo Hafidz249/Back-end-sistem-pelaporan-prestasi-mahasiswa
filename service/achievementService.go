@@ -408,3 +408,83 @@ func (s *AchievementService) DeleteAchievement(c *fiber.Ctx) error {
 		},
 	})
 }
+// GetAchievements - Get achievements list (filtered by role)
+// @Summary Get achievements list
+// @Description Mendapatkan daftar prestasi berdasarkan role user
+// @Tags Achievements
+// @Security BearerAuth
+// @Param page query int false "Page number"
+// @Param per_page query int false "Items per page"
+// @Param status query string false "Achievement status"
+// @Success 200 {object} map[string]interface{} "List of achievements"
+// @Router /api/v1/achievements [get]
+func (s *AchievementService) GetAchievements(c *fiber.Ctx) error {
+	// TODO: Implement role-based achievement listing
+	return c.JSON(fiber.Map{
+		"message": "get achievements list - coming soon",
+	})
+}
+
+// UpdateAchievement - Update achievement (Mahasiswa)
+// @Summary Update achievement
+// @Description Mahasiswa mengupdate prestasi yang masih draft
+// @Tags Achievements
+// @Security BearerAuth
+// @Param id path string true "Achievement ID"
+// @Param request body model.SubmitAchievementRequest true "Achievement update data"
+// @Success 200 {object} map[string]interface{} "Achievement updated"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Router /api/v1/achievements/{id} [put]
+func (s *AchievementService) UpdateAchievement(c *fiber.Ctx) error {
+	// TODO: Implement update achievement
+	return c.JSON(fiber.Map{
+		"message": "update achievement - coming soon",
+	})
+}
+
+// GetAchievementHistory - Get achievement status history
+// @Summary Get achievement history
+// @Description Mendapatkan riwayat status perubahan prestasi
+// @Tags Achievements
+// @Security BearerAuth
+// @Param id path string true "Achievement ID"
+// @Success 200 {object} map[string]interface{} "Achievement history"
+// @Router /api/v1/achievements/{id}/history [get]
+func (s *AchievementService) GetAchievementHistory(c *fiber.Ctx) error {
+	// TODO: Implement achievement history
+	return c.JSON(fiber.Map{
+		"message": "get achievement history - coming soon",
+	})
+}
+
+// UploadAttachments - Upload achievement attachments
+// @Summary Upload attachments
+// @Description Upload dokumen pendukung prestasi
+// @Tags Achievements
+// @Security BearerAuth
+// @Param id path string true "Achievement ID"
+// @Param files formData file true "Attachment files"
+// @Success 200 {object} map[string]interface{} "Files uploaded"
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Router /api/v1/achievements/{id}/attachments [post]
+func (s *AchievementService) UploadAttachments(c *fiber.Ctx) error {
+	// TODO: Implement file upload
+	return c.JSON(fiber.Map{
+		"message": "upload attachments - coming soon",
+	})
+}
+
+// GetStudentAchievements - Get achievements for specific student
+// @Summary Get student achievements
+// @Description Mendapatkan daftar prestasi mahasiswa tertentu
+// @Tags Students
+// @Security BearerAuth
+// @Param id path string true "Student ID"
+// @Success 200 {object} map[string]interface{} "Student achievements"
+// @Router /api/v1/students/{id}/achievements [get]
+func (s *AchievementService) GetStudentAchievements(c *fiber.Ctx) error {
+	// TODO: Implement get student achievements
+	return c.JSON(fiber.Map{
+		"message": "get student achievements - coming soon",
+	})
+}

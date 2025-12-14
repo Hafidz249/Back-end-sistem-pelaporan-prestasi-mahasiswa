@@ -665,3 +665,17 @@ func (s *LecturerService) createNotificationForStudent(
 
 	return s.AchievementRepo.CreateNotification(notification)
 }
+// GetAdvisees - Get lecturer's advisee students
+// @Summary Get advisee students
+// @Description Dosen mendapatkan daftar mahasiswa bimbingannya
+// @Tags Lecturers
+// @Security BearerAuth
+// @Param id path string true "Lecturer ID"
+// @Success 200 {object} map[string]interface{} "List of advisee students"
+// @Router /api/v1/lecturers/{id}/advisees [get]
+func (s *LecturerService) GetAdvisees(c *fiber.Ctx) error {
+	// TODO: Implement get advisees
+	return c.JSON(fiber.Map{
+		"message": "get advisees - coming soon",
+	})
+}

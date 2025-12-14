@@ -23,116 +23,106 @@ func SetupRoutes(
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{"message": "pong"})
 	})
 
-	// Auth routes (public)
-	auth := app.Group("/api/auth")
+	// API v1 routes
+	v1 := app.Group("/api/v1")
+
+	// 5.1 Authentication routes (public)
+	auth := v1.Group("/auth")
 	auth.Post("/login", authService.Login)
+	auth.Post("/refresh", authService.RefreshToken)
+	auth.Post("/logout", authService.Logout)
 
 	// Protected routes - require authentication
-	api := app.Group("/api", middleware.JWTAuth())
+	authProtected := v1.Group("/auth", middleware.JWTAuth())
+	authProtected.Get("/profile", authService.GetProfile)
 
-	// Example: User profile (authenticated users only)
-	api.Get("/profile", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"user_id":  c.Locals("user_id"),
-			"username": c.Locals("username"),
-			"email":    c.Locals("email"),
-		})
-	})
+	// Protected API routes
+	api := v1.Group("", middleware.JWTAuth())
 
-	// Achievements routes
+	// 5.2 Users (Admin only)
+	users := api.Group("/users", roleMiddleware.RequireRole("admin", "super_admin"))
+	users.Get("/", adminService.GetAllUsers)
+	users.Get("/:id", adminService.GetUserByID)
+	users.Post("/", adminService.CreateUser)
+	users.Put("/:id", adminService.UpdateUser)
+	users.Delete("/:id", adminService.DeleteUser)
+	users.Put("/:id/role", adminService.UpdateUserRole)
+
+	// 5.4 Achievements routes
 	achievements := api.Group("/achievements")
 
-	// FR-003: Submit Prestasi (create draft)
+	// List achievements (filtered by role)
+	achievements.Get("/", achievementService.GetAchievements)
+
+	// Detail achievement
+	achievements.Get("/:id", achievementService.GetAchievementDetail)
+
+	// Create achievement (Mahasiswa)
 	achievements.Post("/",
 		permMiddleware.RequirePermission("achievements", "create"),
 		achievementService.SubmitAchievement,
 	)
 
-	// FR-004: Submit untuk Verifikasi (draft -> submitted)
-	achievements.Post("/:reference_id/submit",
-		achievementService.SubmitForVerification,
+	// Update achievement (Mahasiswa)
+	achievements.Put("/:id",
+		permMiddleware.RequirePermission("achievements", "update"),
+		achievementService.UpdateAchievement,
 	)
 
-	// Mahasiswa melihat prestasi sendiri
-	achievements.Get("/my",
-		achievementService.GetMyAchievements,
-	)
-
-	// Melihat detail prestasi
-	achievements.Get("/:id",
-		achievementService.GetAchievementDetail,
-	)
-
-	// FR-005: Hapus Prestasi (soft delete)
-	achievements.Delete("/:reference_id",
+	// Delete achievement (Mahasiswa)
+	achievements.Delete("/:id",
 		achievementService.DeleteAchievement,
 	)
 
-	// FR-011: Student Statistics (own)
-	achievements.Get("/statistics",
-		statisticsService.GetMyStatistics,
+	// Submit for verification
+	achievements.Post("/:id/submit",
+		achievementService.SubmitForVerification,
 	)
 
-	// TODO: Update achievement
-	achievements.Put("/:id",
-		permMiddleware.RequirePermission("achievements", "update"),
-		func(c *fiber.Ctx) error {
-			return c.JSON(fiber.Map{"message": "update achievement - coming soon"})
-		},
-	)
-
-	// FR-009: Admin routes - Manage Users
-	admin := api.Group("/admin", roleMiddleware.RequireRole("admin", "super_admin"))
-
-	// User management
-	admin.Get("/users", adminService.GetAllUsers)
-	admin.Post("/users", adminService.CreateUser)
-	admin.Put("/users/:user_id", adminService.UpdateUser)
-	admin.Delete("/users/:user_id", adminService.DeleteUser)
-
-	// Profile management
-	admin.Post("/students/profile", adminService.CreateStudentProfile)
-	admin.Post("/lecturers/profile", adminService.CreateLecturerProfile)
-
-	// Advisor management
-	admin.Put("/students/:student_id/advisor", adminService.UpdateStudentAdvisor)
-
-	// Role management
-	admin.Get("/roles", adminService.GetAllRoles)
-
-	// FR-010: View All Achievements
-	admin.Get("/achievements", adminService.ViewAllAchievements)
-
-	// FR-011: Admin Statistics
-	admin.Get("/statistics", statisticsService.GetAllStatistics)
-
-	// Example: Student routes
-	students := api.Group("/students")
-	students.Get("/",
-		permMiddleware.RequirePermission("students", "read"),
-		func(c *fiber.Ctx) error {
-			return c.JSON(fiber.Map{"message": "list students"})
-		},
-	)
-
-	// Lecturer routes
-	lecturer := api.Group("/lecturer", roleMiddleware.RequireRole("lecturer", "dosen"))
-
-	// FR-006: View Prestasi Mahasiswa Bimbingan
-	lecturer.Get("/students/achievements",
-		lecturerService.ViewStudentAchievements,
-	)
-
-	// FR-007 & FR-008: Verify/Reject Prestasi
-	lecturer.Post("/achievements/:reference_id/verify",
+	// Verify achievement (Dosen Wali)
+	achievements.Post("/:id/verify",
+		roleMiddleware.RequireRole("lecturer", "dosen"),
 		lecturerService.VerifyAchievement,
 	)
-	lecturer.Post("/achievements/:reference_id/reject",
+
+	// Reject achievement (Dosen Wali)
+	achievements.Post("/:id/reject",
+		roleMiddleware.RequireRole("lecturer", "dosen"),
 		lecturerService.RejectAchievement,
 	)
 
-	// FR-011: Lecturer Statistics (advisee)
-	lecturer.Get("/statistics",
-		statisticsService.GetAdviseeStatistics,
+	// Status history
+	achievements.Get("/:id/history",
+		achievementService.GetAchievementHistory,
 	)
+
+	// Upload attachments
+	achievements.Post("/:id/attachments",
+		achievementService.UploadAttachments,
+	)
+
+	// 5.5 Students & Lecturers
+	students := api.Group("/students")
+	students.Get("/", adminService.GetAllStudents)
+	students.Get("/:id", adminService.GetStudentByID)
+	students.Get("/:id/achievements", achievementService.GetStudentAchievements)
+	students.Put("/:id/advisor", 
+		roleMiddleware.RequireRole("admin", "super_admin"),
+		adminService.UpdateStudentAdvisor,
+	)
+
+	lecturers := api.Group("/lecturers")
+	lecturers.Get("/", adminService.GetAllLecturers)
+	lecturers.Get("/:id/advisees", lecturerService.GetAdvisees)
+
+	// 5.8 Reports & Analytics
+	reports := api.Group("/reports")
+	reports.Get("/statistics", statisticsService.GetAllStatistics)
+	reports.Get("/student/:id", statisticsService.GetStudentReport)
+
+	// Admin routes (legacy support)
+	admin := api.Group("/admin", roleMiddleware.RequireRole("admin", "super_admin"))
+	admin.Post("/students/profile", adminService.CreateStudentProfile)
+	admin.Post("/lecturers/profile", adminService.CreateLecturerProfile)
+	admin.Get("/roles", adminService.GetAllRoles)
 }
