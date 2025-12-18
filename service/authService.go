@@ -27,7 +27,7 @@ func NewAuthService(authRepo *repository.AuthRepository) *AuthService {
 // @Success 200 {object} model.LoginResponse "Login berhasil"
 // @Failure 400 {object} map[string]string "Invalid request"
 // @Failure 401 {object} map[string]string "Invalid credentials"
-// @Router /api/auth/login [post]
+// @Router /api/v1/auth/login [post]
 func (s *AuthService) Login(c *fiber.Ctx) error {
 	var req model.LoginRequest
 

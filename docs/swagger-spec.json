@@ -1,0 +1,793 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "UAS Achievement Management API",
+    "version": "1.0.0",
+    "description": "API untuk sistem management prestasi mahasiswa yang mendukung:\n- Autentikasi dan otorisasi berbasis role\n- Manajemen prestasi mahasiswa\n- Workflow verifikasi prestasi\n- Laporan dan statistik prestasi"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080/api/v1",
+      "description": "Development server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "LoginRequest": {
+        "type": "object",
+        "required": ["username", "password"],
+        "properties": {
+          "username": {
+            "type": "string",
+            "example": "student123",
+            "description": "Username atau email pengguna"
+          },
+          "password": {
+            "type": "string",
+            "example": "password123",
+            "description": "Password pengguna"
+          }
+        }
+      },
+      "LoginResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "login successful"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "token": {
+                "type": "string",
+                "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+              },
+              "user": {
+                "$ref": "#/components/schemas/UserProfile"
+              }
+            }
+          }
+        }
+      },
+      "UserProfile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "username": {
+            "type": "string",
+            "example": "student123"
+          },
+          "email": {
+            "type": "string",
+            "example": "student@example.com"
+          },
+          "full_name": {
+            "type": "string",
+            "example": "John Doe"
+          },
+          "role": {
+            "type": "string",
+            "example": "student"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["achievements:create", "achievements:read"]
+          }
+        }
+      },
+      "Achievement": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "507f1f77bcf86cd799439011"
+          },
+          "title": {
+            "type": "string",
+            "example": "Juara 1 Programming Contest"
+          },
+          "achievement_type": {
+            "type": "string",
+            "enum": ["akademik", "non-akademik"],
+            "example": "akademik"
+          },
+          "description": {
+            "type": "string",
+            "example": "Kompetisi programming tingkat nasional"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["draft", "submitted", "verified", "rejected"],
+            "example": "verified"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-01-15T10:00:00Z"
+          }
+        }
+      },
+      "CreateAchievementRequest": {
+        "type": "object",
+        "required": ["achievement_type", "title", "description"],
+        "properties": {
+          "achievement_type": {
+            "type": "string",
+            "enum": ["akademik", "non-akademik"],
+            "example": "akademik"
+          },
+          "title": {
+            "type": "string",
+            "example": "Juara 1 Programming Contest"
+          },
+          "description": {
+            "type": "string",
+            "example": "Kompetisi programming tingkat nasional"
+          },
+          "details": {
+            "type": "object",
+            "example": {
+              "level": "nasional",
+              "category": "programming",
+              "date": "2024-01-15"
+            }
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "example": "invalid request"
+          },
+          "message": {
+            "type": "string",
+            "example": "Detailed error message"
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "Endpoint untuk autentikasi dan manajemen sesi"
+    },
+    {
+      "name": "Achievements",
+      "description": "Manajemen prestasi mahasiswa"
+    },
+    {
+      "name": "Users",
+      "description": "Manajemen pengguna (Admin only)"
+    },
+    {
+      "name": "Reports",
+      "description": "Laporan dan statistik"
+    }
+  ],
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Login pengguna",
+        "description": "Autentikasi pengguna dengan username/email dan password",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login berhasil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Request tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Kredensial tidak valid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/profile": {
+      "get": {
+        "tags": ["Authentication"],
+        "summary": "Get user profile",
+        "description": "Mendapatkan profil pengguna yang sedang login",
+        "responses": {
+          "200": {
+            "description": "User profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserProfile"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
+    "/achievements": {
+      "get": {
+        "tags": ["Achievements"],
+        "summary": "List achievements",
+        "description": "Mendapatkan daftar prestasi (filtered berdasarkan role)",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["draft", "submitted", "verified", "rejected"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of achievements",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "achievements": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Achievement"
+                          }
+                        },
+                        "pagination": {
+                          "type": "object"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Achievements"],
+        "summary": "Create achievement",
+        "description": "Membuat prestasi baru (Mahasiswa)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAchievementRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Achievement created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "achievement created successfully"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Achievement"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          }
+        }
+      }
+    },
+    "/achievements/{id}": {
+      "get": {
+        "tags": ["Achievements"],
+        "summary": "Get achievement detail",
+        "description": "Mendapatkan detail prestasi berdasarkan ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Achievement details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Achievement"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Achievement not found"
+          }
+        }
+      },
+      "put": {
+        "tags": ["Achievements"],
+        "summary": "Update achievement",
+        "description": "Update prestasi (Mahasiswa - hanya draft)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAchievementRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Achievement updated successfully"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "403": {
+            "description": "Cannot update non-draft achievement"
+          },
+          "404": {
+            "description": "Achievement not found"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Achievements"],
+        "summary": "Delete achievement",
+        "description": "Soft delete prestasi (Mahasiswa - hanya draft)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Achievement deleted successfully"
+          },
+          "403": {
+            "description": "Cannot delete non-draft achievement"
+          },
+          "404": {
+            "description": "Achievement not found"
+          }
+        }
+      }
+    },
+    "/achievements/{id}/submit": {
+      "post": {
+        "tags": ["Achievements"],
+        "summary": "Submit for verification",
+        "description": "Submit prestasi untuk verifikasi dosen wali",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Achievement submitted for verification"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "404": {
+            "description": "Achievement not found"
+          }
+        }
+      }
+    },
+    "/achievements/{id}/verify": {
+      "post": {
+        "tags": ["Achievements"],
+        "summary": "Verify achievement",
+        "description": "Approve prestasi mahasiswa (Dosen Wali)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Achievement verified successfully"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          },
+          "404": {
+            "description": "Achievement not found"
+          }
+        }
+      }
+    },
+    "/achievements/{id}/reject": {
+      "post": {
+        "tags": ["Achievements"],
+        "summary": "Reject achievement",
+        "description": "Reject prestasi dengan catatan (Dosen Wali)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["rejection_note"],
+                "properties": {
+                  "rejection_note": {
+                    "type": "string",
+                    "example": "Dokumen tidak lengkap"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Achievement rejected successfully"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          }
+        }
+      }
+    },
+    "/users": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get all users",
+        "description": "Admin mendapatkan daftar semua users",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of users"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Users"],
+        "summary": "Create user",
+        "description": "Admin membuat user baru",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["username", "email", "password", "full_name", "role_id"],
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "example": "newuser"
+                  },
+                  "email": {
+                    "type": "string",
+                    "example": "newuser@example.com"
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "password123"
+                  },
+                  "full_name": {
+                    "type": "string",
+                    "example": "New User"
+                  },
+                  "role_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created successfully"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "403": {
+            "description": "Insufficient permissions"
+          }
+        }
+      }
+    },
+    "/users/{id}": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get user by ID",
+        "description": "Admin mendapatkan detail user",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User details"
+          },
+          "404": {
+            "description": "User not found"
+          }
+        }
+      },
+      "put": {
+        "tags": ["Users"],
+        "summary": "Update user",
+        "description": "Admin mengupdate data user",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User updated successfully"
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Users"],
+        "summary": "Delete user",
+        "description": "Admin menghapus user (soft delete)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User deleted successfully"
+          }
+        }
+      }
+    },
+    "/reports/statistics": {
+      "get": {
+        "tags": ["Reports"],
+        "summary": "Get statistics",
+        "description": "Mendapatkan statistik prestasi (multi-role access)",
+        "parameters": [
+          {
+            "name": "start_date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "end_date",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "achievement_type",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Achievement statistics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "summary": {
+                          "type": "object"
+                        },
+                        "total_by_type": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        },
+                        "top_students": {
+                          "type": "array",
+                          "items": {
+                            "type": "object"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,974 +1,464 @@
-openapi: 3.0.0
+definitions:
+  model.LoginRequest:
+    properties:
+      credential:
+        description: username atau email
+        type: string
+      password:
+        type: string
+    type: object
+  model.LoginResponse:
+    properties:
+      profile:
+        $ref: '#/definitions/model.UserProfile'
+      token:
+        type: string
+    type: object
+  model.Permission:
+    properties:
+      action:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      resource:
+        type: string
+    type: object
+  model.RoleInfo:
+    properties:
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.SubmitAchievementRequest:
+    properties:
+      achievement_type:
+        type: string
+      description:
+        type: string
+      details: {}
+      title:
+        type: string
+    type: object
+  model.UserProfile:
+    properties:
+      email:
+        type: string
+      full_name:
+        type: string
+      id:
+        type: string
+      permissions:
+        items:
+          $ref: '#/definitions/model.Permission'
+        type: array
+      role:
+        $ref: '#/definitions/model.RoleInfo'
+      username:
+        type: string
+    type: object
 info:
-  title: Sistem Pelaporan Prestasi Mahasiswa API
-  description: |
-    API untuk sistem pelaporan prestasi mahasiswa dengan fitur:
-    - Authentication & Authorization (JWT)
-    - Role-based Access Control (RBAC)
-    - Achievement Management
-    - Statistics & Reporting
-    - User Management
-  version: 1.0.0
-  contact:
-    name: API Support
-    email: support@example.com
-  license:
-    name: MIT
-    url: https://opensource.org/licenses/MIT
-
-servers:
-  - url: http://localhost:8080/api/v1
-    description: Development server
-  - url: https://api.prestasi.example.com/api/v1
-    description: Production server
-
-tags:
-  - name: Authentication
-    description: Login dan autentikasi
-  - name: Achievements
-    description: Manajemen prestasi mahasiswa
-  - name: Admin
-    description: Manajemen sistem (Admin only)
-  - name: Lecturer
-    description: Fitur dosen wali
-  - name: Statistics
-    description: Statistik dan reporting
-
-security:
-  - BearerAuth: []
-
-components:
-  securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-
-  schemas:
-    # Auth Models
-    LoginRequest:
-      type: object
-      required:
-        - username
-        - password
-      properties:
-        username:
-          type: string
-          example: "student123"
-          description: "Username atau email"
-        password:
-          type: string
-          example: "password123"
-          description: "Password user"
-
-    LoginResponse:
-      type: object
-      properties:
-        message:
-          type: string
-          example: "login successful"
-        data:
-          type: object
-          properties:
-            token:
-              type: string
-              example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-            user:
-              $ref: '#/components/schemas/UserProfile'
-
-    UserProfile:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-          example: "123e4567-e89b-12d3-a456-426614174000"
-        username:
-          type: string
-          example: "student123"
-        email:
-          type: string
-          example: "student@example.com"
-        full_name:
-          type: string
-          example: "John Doe"
-        role:
-          type: string
-          example: "student"
-        permissions:
-          type: array
-          items:
-            type: string
-          example: ["achievements:create", "achievements:read"]
-
-    # Achievement Models
-    SubmitAchievementRequest:
-      type: object
-      required:
-        - achievement_type
-        - title
-        - description
-      properties:
-        achievement_type:
-          type: string
-          enum: [akademik, non-akademik]
-          example: "akademik"
-        title:
-          type: string
-          example: "Juara 1 Programming Contest"
-        description:
-          type: string
-          example: "Kompetisi programming tingkat nasional"
-        details:
-          type: object
-          example:
-            level: "nasional"
-            category: "programming"
-            date: "2024-01-15"
-
-    AchievementResponse:
-      type: object
-      properties:
-        message:
-          type: string
-          example: "achievement created successfully"
-        data:
-          type: object
-          properties:
-            achievement_id:
-              type: string
-              example: "507f1f77bcf86cd799439011"
-            achievement_reference_id:
-              type: string
-              format: uuid
-            student_id:
-              type: string
-              format: uuid
-            achievement_type:
-              type: string
-              example: "akademik"
-            title:
-              type: string
-              example: "Juara 1 Programming Contest"
-            description:
-              type: string
-              example: "Kompetisi programming tingkat nasional"
-            status:
-              type: string
-              enum: [draft, submitted, verified, rejected, deleted]
-              example: "draft"
-            created_at:
-              type: string
-              format: date-time
-
-    # Statistics Models
-    AchievementStatistics:
-      type: object
-      properties:
-        total_by_type:
-          type: array
-          items:
-            $ref: '#/components/schemas/TypeStatistic'
-        total_by_period:
-          type: array
-          items:
-            $ref: '#/components/schemas/PeriodStatistic'
-        top_students:
-          type: array
-          items:
-            $ref: '#/components/schemas/TopStudent'
-        competition_levels:
-          type: array
-          items:
-            $ref: '#/components/schemas/LevelStatistic'
-        summary:
-          $ref: '#/components/schemas/StatisticSummary'
-
-    TypeStatistic:
-      type: object
-      properties:
-        achievement_type:
-          type: string
-          example: "akademik"
-        count:
-          type: integer
-          example: 15
-        percentage:
-          type: number
-          format: float
-          example: 75.0
-
-    TopStudent:
-      type: object
-      properties:
-        student_id:
-          type: string
-          format: uuid
-        student_id_number:
-          type: string
-          example: "2021001"
-        full_name:
-          type: string
-          example: "John Doe"
-        program_study:
-          type: string
-          example: "Teknik Informatika"
-        total_count:
-          type: integer
-          example: 10
-        verified_count:
-          type: integer
-          example: 8
-
-    # Error Models
-    ErrorResponse:
-      type: object
-      properties:
-        error:
-          type: string
-          example: "invalid request"
-        message:
-          type: string
-          example: "Detailed error message"
-
-    ValidationError:
-      type: object
-      properties:
-        error:
-          type: string
-          example: "validation failed"
-        details:
-          type: array
-          items:
-            type: object
-            properties:
-              field:
-                type: string
-                example: "username"
-              message:
-                type: string
-                example: "username is required"
-
+  contact: {}
 paths:
-  # Health Check
-  /ping:
+  /api/v1/achievements:
     get:
-      tags:
-        - Health
-      summary: Health check endpoint
-      description: Check if API is running
-      responses:
-        '200':
-          description: API is healthy
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "pong"
-
-  # Authentication
-  /auth/login:
-    post:
-      tags:
-        - Authentication
-      summary: User login
-      description: Login dengan username/email dan password
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/LoginRequest'
-      responses:
-        '200':
-          description: Login berhasil
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LoginResponse'
-        '400':
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: Invalid credentials
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /auth/refresh:
-    post:
-      tags:
-        - Authentication
-      summary: Refresh JWT token
-      description: Refresh expired JWT token dengan refresh token
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - refresh_token
-              properties:
-                refresh_token:
-                  type: string
-                  example: "refresh_token_here"
-      responses:
-        '200':
-          description: Token refreshed successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "token refreshed successfully"
-                  data:
-                    type: object
-                    properties:
-                      token:
-                        type: string
-        '400':
-          description: Invalid request
-        '401':
-          description: Invalid refresh token
-
-  /auth/logout:
-    post:
-      tags:
-        - Authentication
-      summary: User logout
-      description: Logout user dan invalidate token
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: Logout successful
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "logout successful"
-        '401':
-          description: Unauthorized
-
-  # Profile
-  /auth/profile:
-    get:
-      tags:
-        - Authentication
-      summary: Get user profile
-      description: Mendapatkan profil user yang sedang login
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: User profile
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  user_id:
-                    type: string
-                    format: uuid
-                  username:
-                    type: string
-                  email:
-                    type: string
-
-  # Users (Admin)
-  /users:
-    get:
-      tags:
-        - Admin
-      summary: Get all users
-      description: Admin mendapatkan daftar semua users
-      security:
-        - BearerAuth: []
+      description: Mendapatkan daftar prestasi berdasarkan role user
       parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: per_page
-          in: query
-          schema:
-            type: integer
-            default: 10
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page
+        in: query
+        name: per_page
+        type: integer
+      - description: Achievement status
+        in: query
+        name: status
+        type: string
       responses:
-        '200':
-          description: List of users
-        '403':
-          description: Insufficient permissions
-
-    post:
-      tags:
-        - Admin
-      summary: Create user
-      description: Admin membuat user baru
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - username
-                - email
-                - password
-                - full_name
-                - role_id
-              properties:
-                username:
-                  type: string
-                email:
-                  type: string
-                password:
-                  type: string
-                full_name:
-                  type: string
-                role_id:
-                  type: string
-                  format: uuid
-      responses:
-        '201':
-          description: User created successfully
-        '400':
-          description: Invalid request
-        '403':
-          description: Insufficient permissions
-
-  /users/{id}:
-    get:
-      tags:
-        - Admin
-      summary: Get user by ID
-      description: Admin mendapatkan detail user
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: User details
-        '404':
-          description: User not found
-
-    put:
-      tags:
-        - Admin
-      summary: Update user
-      description: Admin mengupdate data user
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: User updated successfully
-
-    delete:
-      tags:
-        - Admin
-      summary: Delete user
-      description: Admin menghapus user (soft delete)
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: User deleted successfully
-
-  /users/{id}/role:
-    put:
-      tags:
-        - Admin
-      summary: Update user role
-      description: Admin mengubah role user
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - role_id
-              properties:
-                role_id:
-                  type: string
-                  format: uuid
-      responses:
-        '200':
-          description: Role updated successfully
-
-  # Achievements
-  /achievements:
-    post:
-      tags:
-        - Achievements
-      summary: Submit prestasi (FR-003)
-      description: Mahasiswa submit prestasi baru dengan status draft
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SubmitAchievementRequest'
-      responses:
-        '201':
-          description: Achievement created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AchievementResponse'
-        '400':
-          description: Invalid request
-        '401':
-          description: Unauthorized
-        '403':
-          description: Insufficient permissions
-
-    get:
-      tags:
-        - Achievements
-      summary: Get my achievements
-      description: Mahasiswa melihat prestasi sendiri
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: per_page
-          in: query
-          schema:
-            type: integer
-            default: 10
-        - name: status
-          in: query
-          schema:
-            type: string
-            enum: [draft, submitted, verified, rejected]
-      responses:
-        '200':
+        "200":
           description: List of achievements
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  data:
-                    type: object
-                    properties:
-                      achievements:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/AchievementResponse'
-                      pagination:
-                        type: object
-
-  /api/achievements/{reference_id}/submit:
-    post:
-      tags:
-        - Achievements
-      summary: Submit untuk verifikasi (FR-004)
-      description: Submit prestasi draft untuk diverifikasi dosen wali
+          schema:
+            additionalProperties: true
+            type: object
       security:
-        - BearerAuth: []
-      parameters:
-        - name: reference_id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Achievement submitted for verification
-        '400':
-          description: Invalid request
-        '404':
-          description: Achievement not found
-
-  /api/achievements/{reference_id}:
-    delete:
+      - BearerAuth: []
+      summary: Get achievements list
       tags:
-        - Achievements
-      summary: Hapus prestasi (FR-005)
-      description: Soft delete prestasi dengan status draft
-      security:
-        - BearerAuth: []
+      - Achievements
+  /api/v1/achievements/{id}:
+    put:
+      description: Mahasiswa mengupdate prestasi yang masih draft
       parameters:
-        - name: reference_id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Achievement deleted successfully
-        '400':
-          description: Invalid request
-        '404':
-          description: Achievement not found
-
-  /api/achievements/statistics:
-    get:
-      tags:
-        - Statistics
-      summary: Statistik prestasi mahasiswa (FR-011)
-      description: Mahasiswa melihat statistik prestasi sendiri
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: start_date
-          in: query
-          schema:
-            type: string
-            format: date
-        - name: end_date
-          in: query
-          schema:
-            type: string
-            format: date
-        - name: achievement_type
-          in: query
-          schema:
-            type: string
-        - name: status
-          in: query
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Achievement statistics
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  data:
-                    $ref: '#/components/schemas/AchievementStatistics'
-
-  # Lecturer Endpoints
-  /api/lecturer/students/achievements:
-    get:
-      tags:
-        - Lecturer
-      summary: View prestasi mahasiswa bimbingan (FR-006)
-      description: Dosen wali melihat prestasi mahasiswa bimbingannya
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: per_page
-          in: query
-          schema:
-            type: integer
-            default: 10
-        - name: status
-          in: query
-          schema:
-            type: string
-      responses:
-        '200':
-          description: List of student achievements
-        '403':
-          description: Insufficient permissions
-
-  /api/lecturer/achievements/{reference_id}/verify:
-    post:
-      tags:
-        - Lecturer
-      summary: Verify prestasi (FR-007)
-      description: Dosen wali approve prestasi mahasiswa
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: reference_id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Achievement verified successfully
-        '400':
-          description: Invalid request
-        '403':
-          description: Insufficient permissions
-        '404':
-          description: Achievement not found
-
-  /api/lecturer/achievements/{reference_id}/reject:
-    post:
-      tags:
-        - Lecturer
-      summary: Reject prestasi (FR-008)
-      description: Dosen wali reject prestasi dengan catatan
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: reference_id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
+      - description: Achievement ID
+        in: path
+        name: id
         required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - rejection_note
-              properties:
-                rejection_note:
-                  type: string
-                  example: "Dokumen tidak lengkap"
-      responses:
-        '200':
-          description: Achievement rejected successfully
-        '400':
-          description: Invalid request
-        '403':
-          description: Insufficient permissions
-
-  /api/lecturer/statistics:
-    get:
-      tags:
-        - Statistics
-      summary: Statistik mahasiswa bimbingan (FR-011)
-      description: Dosen wali melihat statistik prestasi mahasiswa bimbingannya
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: start_date
-          in: query
-          schema:
-            type: string
-            format: date
-        - name: end_date
-          in: query
-          schema:
-            type: string
-            format: date
-        - name: top_limit
-          in: query
-          schema:
-            type: integer
-            default: 10
-      responses:
-        '200':
-          description: Advisee statistics
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  data:
-                    $ref: '#/components/schemas/AchievementStatistics'
-
-  # Admin Endpoints
-  /api/admin/users:
-    get:
-      tags:
-        - Admin
-      summary: Get all users (FR-009)
-      description: Admin melihat semua users dengan pagination
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: per_page
-          in: query
-          schema:
-            type: integer
-            default: 10
-      responses:
-        '200':
-          description: List of users
-        '403':
-          description: Insufficient permissions
-
-    post:
-      tags:
-        - Admin
-      summary: Create user (FR-009)
-      description: Admin membuat user baru
-      security:
-        - BearerAuth: []
-      requestBody:
+        type: string
+      - description: Achievement update data
+        in: body
+        name: request
         required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - username
-                - email
-                - password
-                - full_name
-                - role_id
-              properties:
-                username:
-                  type: string
-                  example: "newuser"
-                email:
-                  type: string
-                  example: "newuser@example.com"
-                password:
-                  type: string
-                  example: "password123"
-                full_name:
-                  type: string
-                  example: "New User"
-                role_id:
-                  type: string
-                  format: uuid
+        schema:
+          $ref: '#/definitions/model.SubmitAchievementRequest'
       responses:
-        '201':
-          description: User created successfully
-        '400':
+        "200":
+          description: Achievement updated
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
           description: Invalid request
-        '403':
-          description: Insufficient permissions
-
-  /api/admin/achievements:
-    get:
-      tags:
-        - Admin
-      summary: View all achievements (FR-010)
-      description: Admin melihat semua prestasi dengan filter
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       security:
-        - BearerAuth: []
-      parameters:
-        - name: page
-          in: query
-          schema:
-            type: integer
-            default: 1
-        - name: per_page
-          in: query
-          schema:
-            type: integer
-            default: 10
-        - name: status
-          in: query
-          schema:
-            type: string
-        - name: achievement_type
-          in: query
-          schema:
-            type: string
-      responses:
-        '200':
-          description: List of all achievements
-        '403':
-          description: Insufficient permissions
-
-  /api/admin/statistics:
-    get:
+      - BearerAuth: []
+      summary: Update achievement
       tags:
-        - Statistics
-      summary: Statistik semua prestasi (FR-011)
-      description: Admin melihat statistik semua prestasi
-      security:
-        - BearerAuth: []
+      - Achievements
+  /api/v1/achievements/{id}/attachments:
+    post:
+      description: Upload dokumen pendukung prestasi
       parameters:
-        - name: start_date
-          in: query
-          schema:
-            type: string
-            format: date
-        - name: end_date
-          in: query
-          schema:
-            type: string
-            format: date
-        - name: achievement_type
-          in: query
-          schema:
-            type: string
-        - name: status
-          in: query
-          schema:
-            type: string
-        - name: top_limit
-          in: query
-          schema:
-            type: integer
-            default: 20
+      - description: Achievement ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Attachment files
+        in: formData
+        name: files
+        required: true
+        type: file
       responses:
-        '200':
-          description: Global statistics
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  data:
-                    $ref: '#/components/schemas/AchievementStatistics'
+        "200":
+          description: Files uploaded
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Upload attachments
+      tags:
+      - Achievements
+  /api/v1/achievements/{id}/history:
+    get:
+      description: Mendapatkan riwayat status perubahan prestasi
+      parameters:
+      - description: Achievement ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Achievement history
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get achievement history
+      tags:
+      - Achievements
+  /api/v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Login dengan username/email dan password
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login berhasil
+          schema:
+            $ref: '#/definitions/model.LoginResponse'
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Invalid credentials
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: User login
+      tags:
+      - Authentication
+  /api/v1/auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Logout user dan invalidate token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Logout successful
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: User logout
+      tags:
+      - Authentication
+  /api/v1/auth/profile:
+    get:
+      description: Get current user profile information
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User profile
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user profile
+      tags:
+      - Authentication
+  /api/v1/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Refresh expired JWT token dengan refresh token
+      parameters:
+      - description: Refresh token
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Token refreshed
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Invalid refresh token
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Refresh JWT token
+      tags:
+      - Authentication
+  /api/v1/lecturers:
+    get:
+      description: Mendapatkan daftar semua dosen
+      responses:
+        "200":
+          description: List of lecturers
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get all lecturers
+      tags:
+      - Lecturers
+  /api/v1/lecturers/{id}/advisees:
+    get:
+      description: Dosen mendapatkan daftar mahasiswa bimbingannya
+      parameters:
+      - description: Lecturer ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: List of advisee students
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get advisee students
+      tags:
+      - Lecturers
+  /api/v1/reports/student/{id}:
+    get:
+      description: Mendapatkan laporan detail prestasi mahasiswa
+      parameters:
+      - description: Student ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Student report
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get student report
+      tags:
+      - Reports
+  /api/v1/students:
+    get:
+      description: Mendapatkan daftar semua mahasiswa
+      responses:
+        "200":
+          description: List of students
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get all students
+      tags:
+      - Students
+  /api/v1/students/{id}:
+    get:
+      description: Mendapatkan detail mahasiswa berdasarkan ID
+      parameters:
+      - description: Student ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Student details
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get student by ID
+      tags:
+      - Students
+  /api/v1/students/{id}/achievements:
+    get:
+      description: Mendapatkan daftar prestasi mahasiswa tertentu
+      parameters:
+      - description: Student ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Student achievements
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get student achievements
+      tags:
+      - Students
+  /api/v1/users/{id}:
+    get:
+      description: Admin mendapatkan detail user berdasarkan ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: User details
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: User not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user by ID
+      tags:
+      - Admin
+  /api/v1/users/{id}/role:
+    put:
+      description: Admin mengubah role user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Role update request
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties:
+            type: string
+          type: object
+      responses:
+        "200":
+          description: Role updated
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update user role
+      tags:
+      - Admin
+swagger: "2.0"
